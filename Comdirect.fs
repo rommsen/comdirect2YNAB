@@ -262,18 +262,67 @@ let login credentials apiKeys =
     }
 
   asyncResult {
-    printfn "Init Oauth"
+    printfn "Start login"
     let! tokens = initOauth credentials apiKeys
-    printfn "Tokens: %A" tokens
+    // printfn "Tokens: %A" tokens
     let! session_identifier = getTokens requestInfo tokens
-    printfn "session_identifier: %s" session_identifier
+    // printfn "session_identifier: %s" session_identifier
     let! challenge = validationChallenge requestInfo tokens session_identifier
-    printfn "Validation challenge: %A" challenge
+    // printfn "Validation challenge: %A" challenge
     printfn "Press key when push tan accepted"
     System.Console.ReadKey() |> ignore
     let! _ = activateSessionTan requestInfo tokens session_identifier challenge
-    printfn "grantExtendedAccountPermission"
+    // printfn "grantExtendedAccountPermission"
     let! tokens = grantExtendedAccountPermission tokens apiKeys
     
-    return tokens
+    return (requestInfo, tokens)
   }
+
+
+
+module Transactions =
+  type Transaction =
+    {
+      Reference : string 
+      Booking_Date : DateTime
+      Amount : decimal
+      Remitter : string
+    }
+
+  let txDecoder : Decoder<Transaction> =
+    Decode.map4
+      (fun reference bookingDate remitter amount  -> { Reference = reference ;  Booking_Date = bookingDate ; Remitter= remitter ; Amount = amount } )
+      (Decode.field "reference" Decode.string)
+      (Decode.field "bookingDate" Decode.datetime)
+      (Decode.at ["remitter" ; "holderName"] Decode.string)
+      (Decode.at ["amount"; "value"] Decode.decimal)
+
+  let txsDecoder : Decoder<Transaction list> =
+    Decode.field "values" (Decode.list txDecoder)
+
+
+  let get (requestInfo: RequestInfo) tokens accountId =
+  // request.AddHeader("Accept", "application/json");
+  // request.AddHeader("Authorization", "Bearer 700a7cfe-3009-4723-ac46-9264e2f4047a");
+  // request.AddHeader("x-http-request-info", "{\"clientRequestId\":{\"sessionId\":\"f4ab0faf-0e6a-be73-f008-46152ac4d1a9\",\"requestId\":\"888617186\"}}");
+  // request.AddHeader("Content-Type", "application/json");
+
+    async {
+      let! response = httpAsync {
+        GET (sprintf "%sapi/banking/v1/accounts/%s/transactions?transactionState=BOOKED" endpoint accountId)
+        Accept "application/json"
+        Authorization (sprintf "Bearer %s" tokens.Access)
+        Header "x-http-request-info" (requestInfo.Encode())
+        body
+        ContentType "application/json"
+      }
+
+      match response |> Response.toResult with 
+      | Ok response ->
+          let! json_string =  response |> Response.toTextAsync
+          let tokens = Decode.fromString txsDecoder json_string
+          return tokens
+
+      | Error response -> 
+          return! errorWithCodeAndMessage response
+    }
