@@ -1,4 +1,6 @@
 appsettings.json
 .ionide/
+.vscode/
 bin/
 obj/
+.fake
