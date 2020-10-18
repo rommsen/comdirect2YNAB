@@ -6,10 +6,15 @@
   <ItemGroup>
     <Compile Include="Config.fs" />
     <Compile Include="Comdirect.fs" />
-    <Compile Include="Ynab.fs" />
+    <Compile Include="YNAB/Ynab.fs" />
+    <Compile Include="YNAB/Infos.fs" />
+    <Compile Include="YNAB/Transactions.fs" />
+    <Compile Include="Helper.fs" />
+    <Compile Include="Menu.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Argu" Version="6.1.1" />
     <PackageReference Include="FsToolkit.ErrorHandling" Version="1.4.3" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.8" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="3.1.8" />
