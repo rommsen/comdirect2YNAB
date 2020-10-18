@@ -1,11 +1,9 @@
-module YNAB
+module YNAB.Transactions
 
 open System
-
+open System.Text.RegularExpressions
 open YNAB.SDK.Model
 
-
-open System.Text.RegularExpressions
 let private referenceOf input =
   if String.IsNullOrWhiteSpace input 
   then None
@@ -16,7 +14,7 @@ let private referenceOf input =
     then Some result
     else None
 
-let private getExistingTransactions days budgetId accountId (ynabApi : YNAB.SDK.API )=
+let private getExisting days budgetId accountId (ynabApi : YNAB.SDK.API) =
   let date  = new Nullable<DateTime>(DateTime.Today.Subtract(TimeSpan.FromDays(float days)))
 
   async {
@@ -37,10 +35,10 @@ let private toSaveTransaction accountId (transaction : Comdirect.Transactions.Tr
   tx
 
 
-let addNonexistentTransactions days budgetId accountId (bankTransactions : Comdirect.Transactions.Transaction list) (ynabApi : YNAB.SDK.API ) =
+let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transactions.Transaction list) (ynabApi : YNAB.SDK.API ) =
   async {
     let! ynabTransactions =
-      getExistingTransactions days budgetId accountId ynabApi
+      getExisting days budgetId accountId ynabApi
 
     let references =
       ynabTransactions
@@ -63,8 +61,3 @@ let addNonexistentTransactions days budgetId accountId (bankTransactions : Comdi
 
     return newTransactions
   }
-  
-  
-
-
-
