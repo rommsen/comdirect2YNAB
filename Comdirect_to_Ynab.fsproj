@@ -5,7 +5,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Config.fs" />
-    <Compile Include="Comdirect.fs" />
+    <Compile Include="Comdirect/API.fs" />
+    <Compile Include="Comdirect/Login.fs" />
+    <Compile Include="Comdirect/Transactions.fs" />
     <Compile Include="YNAB/Ynab.fs" />
     <Compile Include="YNAB/Infos.fs" />
     <Compile Include="YNAB/Transactions.fs" />

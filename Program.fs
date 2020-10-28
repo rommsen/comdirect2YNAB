@@ -35,10 +35,10 @@ let transfer config =
   let username = Console.ReadLine()
   Console.Write("Password: ")
   let password = Console.ReadLine()
-  let credentials = Comdirect.Credentials.Create username password
+  let credentials = Comdirect.API.Credentials.Create username password
 
   asyncResult {
-    let! requestInfo,tokens = Comdirect.login credentials config.Comdirect_Api
+    let! requestInfo,tokens = Comdirect.Login.login credentials config.Comdirect_Api
 
     let! transactions =
       Comdirect.Transactions.getLastXDays 
