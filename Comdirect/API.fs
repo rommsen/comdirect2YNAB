@@ -1,11 +1,7 @@
 module Comdirect.API
 
-open System
 open Thoth.Json.Net
 open FsHttp
-open FsHttp.DslCE
-open FsToolkit.ErrorHandling
-open Config
 
 type RequestInfo =
   {
@@ -59,6 +55,6 @@ let endpoint = "https://api.comdirect.de/"
 
 let errorWithCodeAndMessage response =
   async {
-    let! error =  response |> Response.toTextAsync
+    let! error = response |> Response.toTextAsync
     return Error (sprintf "Code: %i; Message: %s" (int response.statusCode) error) 
   }

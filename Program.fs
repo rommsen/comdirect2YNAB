@@ -59,12 +59,42 @@ let transfer config =
   |> runAsync
   |> function | Ok result -> printfn "Finished %A" result | Error error -> printfn "Error %s" error
 
+let test config =
+  let ynabApi = new YNAB.SDK.API(config.YNAB_Api.Secret)
 
+  asyncResult {
+    let transactions : Comdirect.Transactions.Transaction list =
+      [
+        {
+          Reference = System.Guid.NewGuid().ToString()
+          Booking_Date = DateTime.Now
+          Amount = 20M
+          Name = Some "test"
+          Info = "Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Lorem ipsum dolor sit amet, consetetur sadipscing elitr, sed diam nonumy eirmod tempor invidunt ut labore et dolore magna aliquyam erat, sed diam voluptua. At vero eos et accusam et justo duo dolores et ea rebum. Stet clita kasd gubergren, no sea takimata sanctus est Lorem ipsum dolor sit amet. Duis autem vel eum iriure dolor in hendrerit in vulputate velit esse molestie consequat, vel illum dolore eu f"
+        }
+      ]
+
+    return!
+      YNAB.Transactions.addNonexistent 
+        config.Transfer.Days 
+        config.Transfer.YNAB_Budget
+        (Guid.Parse(config.Transfer.YNAB_Account))
+        transactions 
+        ynabApi
+
+  }
+  |> runAsync
+  |> function | Ok result -> printfn "Finished %A" result | Error error -> printfn "Error %s" error
+
+
+
+open Thoth.Json.Net
 [<EntryPoint>]
 let main _ =
  
   let main =
     [
+      ("YNAB Test", fun config -> test config ; waitForAnyKey())
       ("Transfer Comdirect Transactions to YNAB", fun config -> transfer config ; waitForAnyKey())
       ("YNAB Infos", fun config -> getYnabInfo config ; waitForAnyKey())
     ], ignore
@@ -75,6 +105,12 @@ let main _ =
   |> UI.Menu.initialize config "Comdirect to Ynab"
   |> ignore
 
+  // let decoded =
+  //   Decode.fromString
+  //     Comdirect.Transactions.txsDecoder
+  //     transactions
+
+  // printfn "%A" decoded
 
   0
 

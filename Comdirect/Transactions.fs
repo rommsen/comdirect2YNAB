@@ -12,68 +12,24 @@ type Transaction =
     Reference : string 
     Booking_Date : DateTime
     Amount : decimal
-    Name : string
+    Name : string option
+    Info: string
   }
 
 let txDecoder : Decoder<Transaction> =
-  // Decode.map4
-  //   (fun reference bookingDate remitter amount  -> { Reference = reference ;  Booking_Date = bookingDate ; Remitter= remitter ; Amount = amount } )
-  //   (Decode.field "reference" Decode.string)
-  //   (Decode.field "bookingDate" Decode.datetime)
-  //   (Decode.at ["remitter" ; "holderName"] Decode.string)
-  //   (Decode.at ["amount"; "value"] Decode.decimal)
-
-  // Decode.object
-  //   (fun get  -> 
-  //     // let name =
-  //     //   match get.Optional.At ["remitter" ; "holderName"] Decode.string with 
-  //     //   | Some x -> printfn "yo" ; x 
-  //     //   | None -> printfn "no" ; get.Required.At ["creditor" ; "holderName"] Decode.string
-
-  //     { 
-  //       Reference = get.Required.Field "reference" Decode.string 
-  //       Booking_Date = get.Required.Field "bookingDate" Decode.datetime 
-  //       Remitter = get.Optional.At ["remittemr" ; "holderName"] Decode.string 
-  //       Creditor = get.Optional.At ["creditor" ; "holderName"] Decode.string 
-  //       Amount = get.Required.At ["amount"; "value"] Decode.decimal 
-  //     } 
-    // )
-
-  let remitterDecoder =
-    Decode.optional "remitter" (Decode.optional "holderName" Decode.string) 
-    |> Decode.map (fun res ->
-      match res with
-      | Some (Some v) -> Some v
-      | Some None -> None
-      | None -> None
-    )
-
-  let creditorDecoder =
-    Decode.optional "creditor" (Decode.optional "holderName" Decode.string) 
-    |> Decode.map (fun res ->
-      match res with
-      | Some (Some v) -> Some v
-      | Some None -> None
-      | None -> None
-    )
-
   Decode.object
     (fun get  -> 
       let name =
-        match get.Optional.Raw remitterDecoder with 
-        | Some (Some x) -> x 
-        | _ ->
-            match get.Required.Raw creditorDecoder with
-            | Some x -> x 
-            | _ -> "no name available"
+        match get.Optional.At ["remitter" ; "holderName"] Decode.string with 
+        | Some x -> Some x 
+        | None -> get.Optional.At ["creditor" ; "holderName"] Decode.string
 
-      
-      // printfn "date %A" (get.Required.Field "bookingDate" Decode.datetime)
       { 
         Reference = get.Required.Field "reference" Decode.string 
-        Booking_Date = (get.Required.Field "bookingDate" Decode.datetime).ToLocalTime()
+        Booking_Date = get.Required.Field "bookingDate" Decode.datetime 
         Name = name
-        Amount = get.Required.At ["amount"; "value"] Decode.decimal 
+        Amount = get.Required.At ["amount"; "value"] Decode.decimal
+        Info = get.Required.Field "remittanceInfo" Decode.string 
       } 
     )
 
