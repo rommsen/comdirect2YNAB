@@ -3,220 +3,186 @@ module Comdirect.Login
 open System
 open Thoth.Json.Net
 open FsHttp
-open FsHttp.DslCE
 open FsToolkit.ErrorHandling
 open Config
 open Comdirect.API
 
-
 let private initOauth credentials apiKeys =
-  // request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
-  // request.AddHeader("Accept", "application/json");
-  // request.AddParameter("client_id", "*");
-  // request.AddParameter("client_secret", "*");
-  // request.AddParameter("grant_type", "password");
-  // request.AddParameter("username", "*");
-  // request.AddParameter("password", "*");
-
-  let credentials =
+  let credentialsBody =
     sprintf "client_id=%s&client_secret=%s&username=%s&password=%s&grant_type=password"
       apiKeys.Client_Id
       apiKeys.Client_Secret
       credentials.Username
       credentials.Password
-
+  printfn "[initOauth] Credentials: %s" credentialsBody
   async {
-    let! response = httpAsync {
-      POST (sprintf "%soauth/token" endpoint)
-      Accept "application/json"
-      body
-      ContentType "application/x-www-form-urlencoded"
-      text credentials
-    } 
+    printfn "[initOauth] Sending token request..."
+    let! response =
+      (http {
+        POST (sprintf "%soauth/token" endpoint)
+        Accept "application/json"
+        body
+        ContentType "application/x-www-form-urlencoded"
+        text credentialsBody
+      })
+      |> Request.sendAsync
 
-    match response |> Response.toResult with 
-    | Ok response ->
-        let! json_string =  response |> Response.toTextAsync
-        let tokens = Decode.fromString Tokens.Decoder json_string
-        return tokens
+    printfn "[initOauth] Received response: %A" response
 
-    | Error response -> 
-        return! errorWithCodeAndMessage response
+    match response |> Response.toResult with
+    | Ok resp ->
+        let! jsonString = resp |> Response.toTextAsync
+        printfn "[initOauth] Response body: %s" jsonString
+        return Decode.fromString Tokens.Decoder jsonString
+    | Error resp ->
+        printfn "[initOauth] Error status code: %A" resp
+        return! errorWithCodeAndMessage resp
   }
 
 let private getTokens (requestInfo: RequestInfo) tokens =
-  // request.AddHeader("Accept", "application/json");
-  // request.AddHeader("Authorization", "Bearer 700a7cfe-3009-4723-ac46-9264e2f4047a");
-  // request.AddHeader("x-http-request-info", "{\"clientRequestId\":{\"sessionId\":\"f4ab0faf-0e6a-be73-f008-46152ac4d1a9\",\"requestId\":\"888617186\"}}");
-  // request.AddHeader("Content-Type", "application/json");
-
   async {
-    let! response = httpAsync {
-      GET (sprintf "%sapi/session/clients/user/v1/sessions" endpoint)
-      Accept "application/json"
-      Authorization (sprintf "Bearer %s" tokens.Access)
-      Header "x-http-request-info" (requestInfo.Encode())
-      body
-      ContentType "application/json"
-    }
+    printfn "[getTokens] Requesting session identifier..."
+    let! response =
+      (http {
+        GET (sprintf "%sapi/session/clients/user/v1/sessions" endpoint)
+        Accept "application/json"
+        Authorization (sprintf "Bearer %s" tokens.Access)
+        header "x-http-request-info" (requestInfo.Encode())
+      })
+      |> Request.sendAsync
 
-    (* 
-      [{
-        "identifier": "67BC081F90DD4AD1B39AB099717AF6E0",
-        "sessionTanActive": false,
-        "activated2FA": false
-      }]
-    *)
-    let identifier_decoder =
+    printfn "[getTokens] Received response: %A" response
+
+    let identifierDecoder =
       Decode.index 0 (Decode.field "identifier" Decode.string)
 
-    match response |> Response.toResult with 
-    | Ok response ->
-        let! json_string =  response |> Response.toTextAsync
-        let tokens = Decode.fromString identifier_decoder json_string
-        return tokens
-
-    | Error response -> 
-        return! errorWithCodeAndMessage response
+    match response |> Response.toResult with
+    | Ok resp ->
+        let! jsonString = resp |> Response.toTextAsync
+        printfn "[getTokens] Response body: %s" jsonString
+        return Decode.fromString identifierDecoder jsonString
+    | Error resp ->
+        printfn "[getTokens] Error status code: %A" resp
+        return! errorWithCodeAndMessage resp
   }
 
-let private validationChallenge (requestInfo: RequestInfo) tokens session_identifier =
-  // request.AddHeader("Accept", "application/json");
-  // request.AddHeader("Authorization", "Bearer 700a7cfe-3009-4723-ac46-9264e2f4047a");
-  // request.AddHeader("x-http-request-info", "{\"clientRequestId\":{\"sessionId\":\"f4ab0faf-0e6a-be73-f008-46152ac4d1a9\",\"requestId\":\"888617186\"}}");
-  // request.AddHeader("Content-Type", "application/json");
-  // request.AddParameter("application/json", "{\r\n        \"identifier\" : \"672713410880480CB04CC7F25BAD5824\",\r\n        \"sessionTanActive\": true,\r\n        \"activated2FA\": true\r\n}",  ParameterType.RequestBody);
-
-  let session = {| identifier = session_identifier ; sessionTanActive = true;  activated2FA = true |}
-  
+let private validationChallenge (requestInfo: RequestInfo) tokens sessionIdentifier =
+  let sessionPayload = {| identifier = sessionIdentifier; sessionTanActive = true; activated2FA = true |}
   async {
-    let! response = httpAsync {
-      POST (sprintf "%sapi/session/clients/user/v1/sessions/%s/validate" endpoint session_identifier)
-      Accept "application/json"
-      Authorization (sprintf "Bearer %s" tokens.Access)
-      Header "x-http-request-info" (requestInfo.Encode())
-      body
-      ContentType "application/json"
-      json (Encode.Auto.toString(0, session))
-    }
+    printfn "[validationChallenge] Validating session %s..." sessionIdentifier
+    let! response =
+      (http {
+        POST (sprintf "%sapi/session/clients/user/v1/sessions/%s/validate" endpoint sessionIdentifier)
+        Accept "application/json"
+        Authorization (sprintf "Bearer %s" tokens.Access)
+        header "x-http-request-info" (requestInfo.Encode())
+        body
+        ContentType "application/json"
+        json (Encode.Auto.toString(0, sessionPayload))
+      })
+      |> Request.sendAsync
 
-    match response |> Response.toResult with 
-    | Ok response ->
-        let header = "x-once-authentication-info"
-        
-        let tryGetChallengeHeaders response =
-          if response.headers.Contains(header) 
-          then response.headers.GetValues(header) |> Seq.tryHead
+    printfn "[validationChallenge] Received response: %A" response
+
+    match response |> Response.toResult with
+    | Ok resp ->
+        let headerName = "x-once-authentication-info"
+        let maybeHeader =
+          if resp.headers.Contains(headerName) then resp.headers.GetValues(headerName) |> Seq.tryHead
           else None
-
-        let decodeChallenge = function
-          | Some json_string -> Decode.fromString Challenge.Decoder json_string 
-          | None -> Error (sprintf "Could not extract challenge info from header: %s" header)
-
-        let validateTanMethod challenge =
-          if challenge.Typ = "P_TAN_PUSH" 
-          then Ok challenge
-          else Error "This client can only validate push tans (P_TAN_PUSH)"         
-          
-        return 
-          response
-          |> tryGetChallengeHeaders
-          |> decodeChallenge 
-          |> Result.bind validateTanMethod
-       
-
-    | Error response -> 
-        return! errorWithCodeAndMessage response
+        let resultChallenge =
+          match maybeHeader with
+          | Some json -> Decode.fromString Challenge.Decoder json
+          | None -> Error (sprintf "Could not extract challenge header: %s" headerName)
+        let bindPush ch =
+          if ch.Typ = "P_TAN_PUSH" then Ok ch
+          else Error "This client can only validate push tans (P_TAN_PUSH)"
+        let final = resultChallenge |> Result.bind bindPush
+        printfn "[validationChallenge] Challenge result: %A" final
+        return final
+    | Error resp ->
+        printfn "[validationChallenge] Error status code: %A" resp
+        return! errorWithCodeAndMessage resp
   }
 
 let private activateSessionTan (requestInfo: RequestInfo) tokens sessionIdentifier challenge =
-  // request.AddHeader("Accept", "application/json");
-  // request.AddHeader("Authorization", "Bearer 700a7cfe-3009-4723-ac46-9264e2f4047a");
-  // request.AddHeader("x-http-request-info", "{\"clientRequestId\":{\"sessionId\":\"f4ab0faf-0e6a-be73-f008-46152ac4d1a9\",\"requestId\":\"888617186\"}}");
-  // request.AddHeader("Content-Type", "application/json");
-  // request.AddHeader("x-once-authentication-info", "{\"id\":\"44991682\"}");
-  // request.AddHeader("x-once-authentication", "000000");
-  // request.AddParameter("application/json", "    {\r\n        \"identifier\" : \"672713410880480CB04CC7F25BAD5824\",\r\n        \"sessionTanActive\" : true,\r\n        \"activated2FA\": true\r\n    }\r\n",  ParameterType.RequestBody);
-  
-  let session = {| identifier = sessionIdentifier ; sessionTanActive = true;  activated2FA = true |}
-
-  let authentication_info = {| id = challenge.Id  |}
-  
+  let sessionPayload = {| identifier = sessionIdentifier; sessionTanActive = true; activated2FA = true |}
+  let authInfo = {| id = challenge.Id |}
   async {
-    let! response = httpAsync {
-      PATCH (sprintf "%sapi/session/clients/user/v1/sessions/%s" endpoint sessionIdentifier)
-      Accept "application/json"
-      Authorization (sprintf "Bearer %s" tokens.Access)
-      Header "x-http-request-info" (requestInfo.Encode())
-      Header "x-once-authentication-info" (Encode.Auto.toString(0, authentication_info))
-      Header "x-once-authentication" "000000"
-      body
-      ContentType "application/json"
-      json (Encode.Auto.toString(0, session))
-    }
+    printfn "[activateSessionTan] Activating session TAN..."
+    let! response =
+      (http {
+        PATCH (sprintf "%sapi/session/clients/user/v1/sessions/%s" endpoint sessionIdentifier)
+        Accept "application/json"
+        AuthorizationBearer tokens.Access
+        header "x-http-request-info" (requestInfo.Encode())
+        header "x-once-authentication-info" (Encode.Auto.toString(0, authInfo))
+        header "x-once-authentication" "000000"
+        body
+        ContentType "application/json"
+        json (Encode.Auto.toString(0, sessionPayload))
+      })
+      |> Request.sendAsync
 
-    match response |> Response.toResult with 
-    | Ok response ->
-        return Ok response
+    printfn "[activateSessionTan] Received response: %A" response
 
-    | Error response -> 
-        return! errorWithCodeAndMessage response
+    match response |> Response.toResult with
+    | Ok resp -> return Ok resp
+    | Error resp ->
+        printfn "[activateSessionTan] Error status code: %A" resp
+        return! errorWithCodeAndMessage resp
   }
 
 let private grantExtendedAccountPermission tokens apiKeys =
-  // request.AddHeader("Content-Type", "application/x-www-form-urlencoded");
-  // request.AddHeader("Accept", "application/json");
-  // request.AddParameter("client_id", "*");
-  // request.AddParameter("client_secret", "*");
-  // request.AddParameter("grant_type", "cd_secondary");
-  // request.AddParameter("token", "700a7cfe-3009-4723-ac46-9264e2f4047a");
-
-  let credentials =
+  let credentialsBody =
     sprintf "client_id=%s&client_secret=%s&token=%s&grant_type=cd_secondary"
       apiKeys.Client_Id
       apiKeys.Client_Secret
       tokens.Access
-
+  printfn "[grantExtendedAccountPermission] Credentials: %s" credentialsBody
   async {
-    let! response = httpAsync {
-      POST (sprintf "%soauth/token" endpoint)
-      Accept "application/json"
-      body
-      ContentType "application/x-www-form-urlencoded"
-      text credentials
-    } 
+    printfn "[grantExtendedAccountPermission] Sending extended grant..."
+    let! response =
+      (http {
+        POST (sprintf "%soauth/token" endpoint)
+        Accept "application/json"
+        body
+        ContentType "application/x-www-form-urlencoded"
+        text credentialsBody
+      })
+      |> Request.sendAsync
 
-    match response |> Response.toResult with 
-    | Ok response ->
-        let! json_string =  response |> Response.toTextAsync
-        let tokens = Decode.fromString Tokens.Decoder json_string
-        return tokens
+    printfn "[grantExtendedAccountPermission] Received response: %A" response
 
-    | Error response -> 
-        return! errorWithCodeAndMessage response
+    match response |> Response.toResult with
+    | Ok resp ->
+        let! jsonString = resp |> Response.toTextAsync
+        printfn "[grantExtendedAccountPermission] Body: %s" jsonString
+        return Decode.fromString Tokens.Decoder jsonString
+    | Error resp ->
+        printfn "[grantExtendedAccountPermission] Error status code: %A" resp
+        return! errorWithCodeAndMessage resp
   }
-
 
 let login credentials apiKeys =  
   let requestInfo =
-    {
-      Request_Id = (new DateTimeOffset(DateTime.Now)).ToUnixTimeSeconds().ToString().Substring(0,9)
-      Session_Id = Guid.NewGuid().ToString()
-    }
-
+    { Request_Id = DateTimeOffset.Now.ToUnixTimeSeconds().ToString().Substring(0,9)
+      Session_Id = Guid.NewGuid().ToString() }
   asyncResult {
-    printfn "Start login"
+    printfn "[login] Start login"
+    printfn "[login] Credentials: %A" credentials
     let! tokens = initOauth credentials apiKeys
-    // printfn "Tokens: %A" tokens
-    let! session_identifier = getTokens requestInfo tokens
-    // printfn "session_identifier: %s" session_identifier
-    let! challenge = validationChallenge requestInfo tokens session_identifier
-    // printfn "Validation challenge: %A" challenge
-    printfn "Press key when push tan accepted"
-    System.Console.ReadKey() |> ignore
-    let! _ = activateSessionTan requestInfo tokens session_identifier challenge
-    // printfn "grantExtendedAccountPermission"
-    let! tokens = grantExtendedAccountPermission tokens apiKeys
-    
-    return (requestInfo, tokens)
+    printfn "[login] Tokens: %A" tokens
+    let! sessionIdentifier = getTokens requestInfo tokens
+    printfn "[login] session_identifier: %s" sessionIdentifier
+    let! challenge = validationChallenge requestInfo tokens sessionIdentifier
+    printfn "[login] Validation challenge: %A" challenge
+    printfn "[login] Press any key after push TAN accepted"
+    Console.ReadKey() |> ignore
+    let! _ = activateSessionTan requestInfo tokens sessionIdentifier challenge
+    printfn "[login] Granted session TAN"
+    printfn "[login] Extending account permission"
+    let! newTokens = grantExtendedAccountPermission tokens apiKeys
+    printfn "[login] Extended tokens: %A" newTokens
+    return (requestInfo, newTokens)
   }
