@@ -36,7 +36,7 @@ let txsDecoder : Decoder<Transaction list> =
 
 let get (requestInfo: RequestInfo) tokens accountId startPagingAt =
   async {
-    printfn "[get] Fetching transactions at offset %i for account %s" startPagingAt accountId
+    // printfn "[get] Fetching transactions at offset %i for account %s" startPagingAt accountId
     let! response =
       (http {
         GET (sprintf "%sapi/banking/v1/accounts/%s/transactions?transactionState=BOOKED&paging-first=%i" endpoint accountId startPagingAt)
@@ -48,26 +48,26 @@ let get (requestInfo: RequestInfo) tokens accountId startPagingAt =
       }
       |> Request.sendAsync)
 
-    printfn "[get] Received response: %A" response
+    // printfn "[get] Received response: %A" response
     match response |> Response.toResult with 
     | Ok resp ->
         let! json = resp |> Response.toTextAsync
-        printfn "[get] Response body: %s" json
+        // printfn "[get] Response body: %s" json
         return Decode.fromString txsDecoder json
     | Error resp ->
-        printfn "[get] Error status code: %A" resp
+        // printfn "[get] Error status code: %A" resp
         return! errorWithCodeAndMessage resp
   }
 
 let getLastXDays (days : int) (requestInfo: RequestInfo) tokens accountId =
   let dateCutoff = DateTime.Today.Subtract(TimeSpan.FromDays(float days))
-  printfn "[getLastXDays] Date cutoff: %A" dateCutoff
+  // printfn "[getLastXDays] Date cutoff: %A" dateCutoff
   let rec startWithPagingAt startPagingAt =
     asyncResult {
-      printfn "[getLastXDays] Paging at %i" startPagingAt
+      // printfn "[getLastXDays] Paging at %i" startPagingAt
       let! transactions = get requestInfo tokens accountId startPagingAt
       let txInUse = transactions |> List.takeWhile (fun tx -> tx.Booking_Date >= dateCutoff)
-      printfn "[getLastXDays] Retrieved %i transactions, %i within cutoff" (List.length transactions) (List.length txInUse)
+      // printfn "[getLastXDays] Retrieved %i transactions, %i within cutoff" (List.length transactions) (List.length txInUse)
       if List.length transactions = List.length txInUse then
         let! more = startWithPagingAt (startPagingAt + List.length transactions)
         return txInUse @ more
