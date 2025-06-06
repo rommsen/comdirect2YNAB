@@ -1,0 +1,5 @@
+rules:
+  - payeePattern: "ALDI"
+    categoryId: "cat_aldi_grocery"
+  - payeePattern: "DM Drogeriemarkt"
+    categoryId: "cat_dm_drugstore"

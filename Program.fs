@@ -3,6 +3,7 @@ open FsToolkit.ErrorHandling
 
 open Helper
 open Config
+open Rules
 
 let getYnabInfo config =
   let ynabApi = new YNAB.SDK.API(config.YNAB_Api.Secret)
@@ -29,7 +30,7 @@ let getYnabInfo config =
   |> function | Ok _ -> printfn "Copy and paste id to appsettings.json. Press key to continue" | Error error -> printfn "Error %s" error
 
 
-let transfer config =
+let transfer config (rules: Rule list) =
   let ynabApi = new YNAB.SDK.API(config.YNAB_Api.Secret)
   Console.Write("Username: ")
   let username = Console.ReadLine()
@@ -54,12 +55,13 @@ let transfer config =
         (Guid.Parse(config.Transfer.YNAB_Account))
         transactions 
         ynabApi
+        rules
 
   }
   |> runAsync
   |> function | Ok result -> printfn "Finished %A" result | Error error -> printfn "Error %s" error
 
-let test config =
+let test config (rules: Rule list) =
   let ynabApi = new YNAB.SDK.API(config.YNAB_Api.Secret)
 
   asyncResult {
@@ -81,6 +83,7 @@ let test config =
         (Guid.Parse(config.Transfer.YNAB_Account))
         transactions 
         ynabApi
+        rules
 
   }
   |> runAsync
@@ -92,16 +95,17 @@ open Thoth.Json.Net
 [<EntryPoint>]
 let main _ =
  
-  let main =
+  let config = Config.fetch()
+  let rules = Rules.loadRules()
+
+  let menuActions = // Changed 'main' to 'menuActions' here for clarity in replace
     [
-      ("YNAB Test", fun config -> test config ; waitForAnyKey())
-      ("Transfer Comdirect Transactions to YNAB", fun config -> transfer config ; waitForAnyKey())
-      ("YNAB Infos", fun config -> getYnabInfo config ; waitForAnyKey())
+      ("YNAB Test", fun cfg -> test cfg rules ; waitForAnyKey())
+      ("Transfer Comdirect Transactions to YNAB", fun cfg -> transfer cfg rules ; waitForAnyKey())
+      ("YNAB Infos", fun cfg -> getYnabInfo cfg ; waitForAnyKey())
     ], ignore
 
-  let config = Config.fetch()
-
-  main
+  menuActions // Use 'menuActions'
   |> UI.Menu.initialize config "Comdirect to Ynab"
   |> ignore
 

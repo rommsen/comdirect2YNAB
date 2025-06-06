@@ -3,6 +3,7 @@ module YNAB.Transactions
 open System
 open System.Text.RegularExpressions
 open YNAB.SDK.Model
+open Rules
 
 let private referenceOf input =
   if String.IsNullOrWhiteSpace input 
@@ -28,13 +29,25 @@ let private truncateString str maxlength =
   elif str.Length <= maxlength then str 
   else str.Substring(0, maxlength)
 
-let private toSaveTransaction accountId (transaction : Comdirect.Transactions.Transaction) =
+let private toSaveTransaction accountId (transaction : Comdirect.Transactions.Transaction) (rules: Rule list) =
   let memo =
     sprintf "%s, %s, Ref: %s" 
       (truncateString (transaction.Name |> Option.defaultValue "") 40)
       (truncateString (Regex.Replace(transaction.Info, @"\s+", " ").Substring(2)) 120)
       transaction.Reference
 
+  // Find the first matching rule
+  let categoryId =
+      rules
+      |> List.tryPick (fun rule ->
+          match transaction.Name with
+          | Some payeeName ->
+              if Regex.IsMatch(payeeName, rule.PayeePattern, RegexOptions.IgnoreCase) then
+                  Some (Guid.Parse(rule.CategoryId))
+              else
+                  None
+          | None -> None // No payee name, no match
+      )
 
   let tx = 
     new SaveTransaction(
@@ -43,11 +56,18 @@ let private toSaveTransaction accountId (transaction : Comdirect.Transactions.Tr
       Memo = memo,
       Date = transaction.Booking_Date,
       Approved = true
+      // CategoryId will be set if a rule matched
     )
+
+  // Set CategoryId if a match was found
+  match categoryId with
+  | Some catId -> tx.CategoryId <- new Nullable<Guid>(catId)
+  | None -> ()
+
   tx
 
 
-let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transactions.Transaction list) (ynabApi : YNAB.SDK.API ) =
+let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transactions.Transaction list) (ynabApi : YNAB.SDK.API ) (rules: Rule list) =
   async {
 
     let! ynabTransactions =
@@ -61,7 +81,7 @@ let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transac
     let newTransactions =
       bankTransactions
       |> List.filter (fun tx -> not (references |> List.contains tx.Reference))
-      |> List.map (toSaveTransaction accountId)
+      |> List.map (fun tx -> toSaveTransaction accountId tx rules)
 
     if not (newTransactions |> List.isEmpty) then
       let wrapped =

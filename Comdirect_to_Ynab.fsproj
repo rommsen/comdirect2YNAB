@@ -12,6 +12,7 @@
     <Compile Include="YNAB/Ynab.fs" />
     <Compile Include="YNAB/Infos.fs" />
     <Compile Include="YNAB/Transactions.fs" />
+    <Compile Include="Rules.fs" />
     <Compile Include="Helper.fs" />
     <Compile Include="Menu.fs" />
     <Compile Include="Program.fs" />
@@ -24,5 +25,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
     <PackageReference Include="Thoth.Json.Net" Version="5.0.0" />
     <PackageReference Include="YNAB.SDK" Version="1.2.0" />
+    <PackageReference Include="YamlDotNet" Version="13.7.1" />
   </ItemGroup>
 </Project>
