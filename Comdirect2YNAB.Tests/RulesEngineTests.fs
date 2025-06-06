@@ -1,4 +1,4 @@
-namespace Comdirect2YNAB.Tests
+module Comdirect2YNAB.Tests
 
 open System
 open Expecto
@@ -98,18 +98,23 @@ let tests =
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
-            Expect.isError compiledResult "Rule compilation should fail due to missing category"
-            let errorMsg = Result.getError compiledResult
-            Expect.stringContains errorMsg "NonExistentCategory' not found" "Error message should indicate missing category"
+            
+            match compiledResult with
+            | Ok _ -> failwith "Rule compilation should fail due to missing category"
+            | Error errorMsg ->
+                Expect.stringContains errorMsg "NonExistentCategory' not found" "Error message should indicate missing category"
+
 
         testCase "Category Name Resolution Error - Default Category Not Found" <| fun _ ->
             let rulesConfig = { DefaultCategory = Some "MissingDefault"; Rules = [] }
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
-            Expect.isError compiledResult "Rule compilation should fail due to missing default category"
-            let errorMsg = Result.getError compiledResult
-            Expect.stringContains errorMsg "MissingDefault' not found" "Error message should indicate missing default category"
+
+            match compiledResult with
+            | Ok _ -> failwith "Rule compilation should fail due to missing default category"
+            | Error errorMsg ->
+                Expect.stringContains errorMsg "MissingDefault' not found" "Error message should indicate missing default category"
 
         testCase "Invalid Regex in Rule" <| fun _ ->
             let rules = [{ Match = "["; Category = "Groceries" }] // Invalid regex
@@ -117,9 +122,11 @@ let tests =
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
-            Expect.isError compiledResult "Rule compilation should fail due to invalid regex"
-            let errorMsg = Result.getError compiledResult
-            Expect.stringContains errorMsg "Invalid regex '['" "Error message should indicate invalid regex"
+
+            match compiledResult with
+            | Ok _ -> failwith "Rule compilation should fail due to invalid regex"
+            | Error errorMsg ->
+                Expect.stringContains errorMsg "Invalid regex '['" "Error message should indicate invalid regex"
 
         testCase "Umlaut and Case Insensitive Category Name Resolution" <| fun _ ->
             let rules = [{ Match = "Test"; Category = "Reisen · Bahn" }] // User input for rule
