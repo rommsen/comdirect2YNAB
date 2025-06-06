@@ -1,4 +1,4 @@
-module Comdirect2YNAB.Tests
+module Tests
 
 open System
 open Expecto
@@ -22,6 +22,7 @@ let travelId = Guid.NewGuid()
 let shoppingId = Guid.NewGuid()
 let uncategorizedId = Guid.NewGuid()
 
+[<Tests>]
 let tests =
     testList "RulesEngine Tests" [
         testCase "Exact Memo Matching" <| fun _ ->
@@ -173,9 +174,3 @@ let tests =
         testCase "Placeholder: YamlConfig - Rule Validation (e.g. missing 'match')" <| fun _ ->
             Expect.isTrue true "This test would validate YamlConfig.parseRulesFile schema checks."
     ]
-
-// If the test project has a Program.fs with an EntryPoint, it would call this.
-// For 'dotnet test' with MSTest adapters, this function might not be directly called by the runner,
-// but Expecto's own runners might use it.
-let run (args: string array) : int =
-    Tests.runTestsInAssembly defaultConfig args
