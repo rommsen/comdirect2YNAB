@@ -16,8 +16,7 @@ let private referenceOf input =
     then Some result
     else None
 
-// Note: Changed ynabApi type to YNAB.SDK.API.IYNABApi for consistency with addNonexistent
-let private getExisting days budgetId accountId (ynabApi : YNAB.SDK.API.IYNABApi) =
+let private getExisting days budgetId accountId (ynabApi : YNAB.SDK.API) =
   let date  = new Nullable<DateTime>(DateTime.Today.Subtract(TimeSpan.FromDays(float days)))
 
   async {
@@ -63,7 +62,7 @@ let addNonexistent
     (budgetId: string)
     (accountId: Guid)
     (bankTransactions: Comdirect.Transactions.Transaction list)
-    (ynabApi: YNAB.SDK.API.IYNABApi) // Changed to IYNABApi
+    (ynabApi: YNAB.SDK.API) 
     (compiledRules: RulesEngine.CompiledRule list) // New parameter
     (defaultCategoryId: Guid option) : Async<Result<string, string>> = // New parameter
   async {

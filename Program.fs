@@ -4,7 +4,7 @@ open FsToolkit.ErrorHandling
 open Comdirect2YNAB // Added
 open Helper
 open Config
-open Menu // Added
+open UI.Menu // Added
 open Thoth.Json.Net // Preserved
 
 let private getDefaultRulesPath () =

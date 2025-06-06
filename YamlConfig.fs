@@ -22,14 +22,12 @@ module YamlConfig =
     let private deserializeRules (yamlContent: string) : RulesConfig =
         let deserializer =
             DeserializerBuilder()
-                .WithNamingConvention(UnderscoreNamingConvention.Instance)
+                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
                 .Build()
         deserializer.Deserialize<RulesConfig>(yamlContent)
 
     let private validateRulesConfig (config: RulesConfig) : Result<RulesConfig, string> =
-        if isNull config.Rules then
-            Error "Missing 'rules' field in rules.yml"
-        else if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Match)) then
+        if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Match)) then
             Error "Invalid 'match' field in one or more rules: cannot be empty."
         else if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Category)) then
             Error "Invalid 'category' field in one or more rules: cannot be empty."

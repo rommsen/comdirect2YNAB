@@ -2,7 +2,7 @@ namespace Comdirect2YNAB
 
 open System
 open System.Text.RegularExpressions
-open YNAB.SDK.API
+open YNAB.SDK.Api
 open YNAB.SDK.Model
 open FsToolkit.ErrorHandling
 
@@ -17,7 +17,7 @@ module RulesEngine =
             // Basic umlaut folding, can be expanded if needed
             .Replace("ä", "ae").Replace("ö", "oe").Replace("ü", "ue").Replace("ß", "ss")
 
-    let fetchCategories (ynabApi: IYNABApi) (budgetId: string) : Async<Result<Map<string, Guid>, string>> =
+    let fetchCategories (ynabApi: YNAB.SDK.API) (budgetId: string) : Async<Result<Map<string, Guid>, string>> =
         asyncResult {
             let! categoriesResponse =
                 try
@@ -85,8 +85,7 @@ module RulesEngine =
         if List.isEmpty errors then
             Ok (compiledRules, defaultCategoryId)
         else
-            Error (String.concat "
-" (List.rev errors))
+            Error (String.concat "" (List.rev errors))
 
 
     let classify (compiledRules: CompiledRule list) (defaultCategoryId: Guid option) (transactionMemo: string option) : Guid option =
