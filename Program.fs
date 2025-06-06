@@ -126,8 +126,7 @@ let main args = // Added args parameter
               Console.WriteLine $"Info: No rules or default category defined in '{rulesPath}'. Proceeding without rule-based categorization."
           conf
       // exitWithError will terminate the program with a message and non-zero exit code
-      | Error errMsg -> YamlConfig.exitWithError $"Failed to parse rules file '{rulesPath}':
-{errMsg}"
+      | Error errMsg -> YamlConfig.exitWithError $"Failed to parse rules file '{rulesPath}': {errMsg}"
 
   // Fetch YNAB Categories & Compile Rules
   let compiledRules, defaultCategoryId =
@@ -144,8 +143,7 @@ let main args = // Added args parameter
                   match RulesEngine.compileRules rulesConfig categoryMap with
                   | Ok (compiled, defaultId) -> return (compiled, defaultId)
                   | Error compileErrors ->
-                      Console.Error.WriteLine $"Error compiling rules from '{rulesPath}':
-{compileErrors}"
+                      Console.Error.WriteLine $"Error compiling rules from '{rulesPath}': {compileErrors}"
                       Environment.Exit(1)
                       return ([], None) // Dummy return
           else
@@ -164,7 +162,7 @@ let main args = // Added args parameter
 
   // Initialize menu
   // Assumes UI.Menu.initialize expects: action list -> config -> title string -> unit
-  UI.Menu.initialize menuActions config "Comdirect to Ynab"
+  UI.Menu.initialize  config "Comdirect to Ynab" (menuActions,ignore)
   |> ignore // Original code had ignore here
 
   0 // Return success code
