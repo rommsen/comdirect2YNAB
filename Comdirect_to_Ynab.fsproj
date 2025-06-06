@@ -5,6 +5,8 @@
     <LangVersion>9.0</LangVersion>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="YamlConfig.fs" />
+    <Compile Include="RulesEngine.fs" />
     <Compile Include="Config.fs" />
     <Compile Include="Comdirect/API.fs" />
     <Compile Include="Comdirect/Login.fs" />
@@ -24,5 +26,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.5" />
     <PackageReference Include="Thoth.Json.Net" Version="5.0.0" />
     <PackageReference Include="YNAB.SDK" Version="1.2.0" />
+    <PackageReference Include="YamlDotNet" Version="13.7.1" />
   </ItemGroup>
 </Project>

@@ -3,6 +3,8 @@ module YNAB.Transactions
 open System
 open System.Text.RegularExpressions
 open YNAB.SDK.Model
+open Comdirect2YNAB // Added
+open Comdirect.Transactions // Added to ensure Transaction type is resolved
 
 let private referenceOf input =
   if String.IsNullOrWhiteSpace input 
@@ -14,7 +16,8 @@ let private referenceOf input =
     then Some result
     else None
 
-let private getExisting days budgetId accountId (ynabApi : YNAB.SDK.API) =
+// Note: Changed ynabApi type to YNAB.SDK.API.IYNABApi for consistency with addNonexistent
+let private getExisting days budgetId accountId (ynabApi : YNAB.SDK.API.IYNABApi) =
   let date  = new Nullable<DateTime>(DateTime.Today.Subtract(TimeSpan.FromDays(float days)))
 
   async {
@@ -28,26 +31,41 @@ let private truncateString str maxlength =
   elif str.Length <= maxlength then str 
   else str.Substring(0, maxlength)
 
-let private toSaveTransaction accountId (transaction : Comdirect.Transactions.Transaction) =
+let private toSaveTransaction
+    (accountId: Guid)
+    (transaction: Comdirect.Transactions.Transaction)
+    (compiledRules: RulesEngine.CompiledRule list) // New parameter
+    (defaultCategoryId: Guid option) : SaveTransaction = // New parameter
+
   let memo =
     sprintf "%s, %s, Ref: %s" 
       (truncateString (transaction.Name |> Option.defaultValue "") 40)
       (truncateString (Regex.Replace(transaction.Info, @"\s+", " ").Substring(2)) 120)
       transaction.Reference
 
+  // Determine category using the rules engine
+  let categoryId = RulesEngine.classify compiledRules defaultCategoryId (Some memo) // Pass the full memo
 
   let tx = 
     new SaveTransaction(
       AccountId = accountId,
       Amount = int64 (transaction.Amount * 1000M),
-      Memo = memo,
+      Memo = memo, // Using the full memo for classification and for YNAB
       Date = transaction.Booking_Date,
-      Approved = true
+      Approved = true,
+      CategoryId = match categoryId with Some id -> Nullable id | None -> Nullable() // Set the CategoryId
     )
   tx
 
 
-let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transactions.Transaction list) (ynabApi : YNAB.SDK.API ) =
+let addNonexistent
+    (days: int)
+    (budgetId: string)
+    (accountId: Guid)
+    (bankTransactions: Comdirect.Transactions.Transaction list)
+    (ynabApi: YNAB.SDK.API.IYNABApi) // Changed to IYNABApi
+    (compiledRules: RulesEngine.CompiledRule list) // New parameter
+    (defaultCategoryId: Guid option) : Async<Result<string, string>> = // New parameter
   async {
 
     let! ynabTransactions =
@@ -61,7 +79,8 @@ let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transac
     let newTransactions =
       bankTransactions
       |> List.filter (fun tx -> not (references |> List.contains tx.Reference))
-      |> List.map (toSaveTransaction accountId)
+      // Pass compiledRules and defaultCategoryId to toSaveTransaction
+      |> List.map (fun bankTx -> toSaveTransaction accountId bankTx compiledRules defaultCategoryId)
 
     if not (newTransactions |> List.isEmpty) then
       let wrapped =
@@ -69,6 +88,10 @@ let addNonexistent days budgetId accountId (bankTransactions : Comdirect.Transac
 
       try 
         let! response = ynabApi.Transactions.CreateTransactionAsync(budgetId, wrapped) |> Async.AwaitTask
+        // Assuming CreateTransactionAsync returns an object with a Data property,
+        // and we want to indicate success. The original code returned "done".
+        // If response structure is different, this part might need adjustment.
+        // For now, preserving the "done" string for compatibility with existing logic.
         return Ok "done"
       with 
       | e -> return Error e.Message
