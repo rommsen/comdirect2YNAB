@@ -118,15 +118,25 @@ let main args = // Added args parameter
       | Some index when args.Length > index + 1 -> args.[index + 1]
       | _ -> getDefaultRulesPath()
 
-  // Parse Rules File
+  // Ensure rules file exists; if not, write a default template
+  if not (File.Exists rulesPath) then
+      let template = """# Default rules for Comdirect2YNAB
+# Optional: default_category: "Uncategorized"
+rules: []
+"""
+      File.WriteAllText(rulesPath, template)
+      Console.WriteLine($"Info: Created default rules file at '{rulesPath}'. Please edit it to add your rules.")
+
+  // Parse Rules File (now tolerant of missing/malformed files)
   let rulesConfig =
       match YamlConfig.parseRulesFile rulesPath with
       | Ok conf ->
           if conf.Rules |> List.isEmpty && conf.DefaultCategory.IsNone then
-              Console.WriteLine $"Info: No rules or default category defined in '{rulesPath}'. Proceeding without rule-based categorization."
+              Console.WriteLine($"Info: No rules or default category defined in '{rulesPath}'. Proceeding without categorization.")
           conf
-      // exitWithError will terminate the program with a message and non-zero exit code
-      | Error errMsg -> YamlConfig.exitWithError $"Failed to parse rules file '{rulesPath}': {errMsg}"
+      | Error errMsg ->
+          Console.WriteLine($"Warning: Could not load rules from '{rulesPath}': {errMsg}. Proceeding without rules.")
+          { DefaultCategory = None; Rules = [] }
 
   // Fetch YNAB Categories & Compile Rules
   let compiledRules, defaultCategoryId =
