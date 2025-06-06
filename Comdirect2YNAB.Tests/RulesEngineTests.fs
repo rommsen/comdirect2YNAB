@@ -31,7 +31,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             let memo = "Shopping at REWE"
             let classifiedCategoryId = RulesEngine.classify compiledRules defaultCatId (Some memo)
@@ -44,7 +47,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             let memo = "Order from Amazon Marketplace"
             let classifiedCategoryId = RulesEngine.classify compiledRules defaultCatId (Some memo)
@@ -57,7 +63,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             Expect.isSome defaultCatId "Default category ID should be resolved"
             Expect.equal (Option.get defaultCatId) uncategorizedId "Default category ID should be Uncategorized"
@@ -72,7 +81,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             let classifiedCategoryId = RulesEngine.classify compiledRules defaultCatId None // No memo
             Expect.equal classifiedCategoryId (Some uncategorizedId) "Should fall back to default category when no memo"
@@ -84,7 +96,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             Expect.isNone defaultCatId "Default category ID should be None"
 
@@ -139,7 +154,10 @@ let tests =
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
             Expect.isOk compiledResult "Rule compilation with umlaut/case variant should succeed"
-            let compiledRules, defaultCatId = Result.get compiledResult
+            let compiledRules, defaultCatId =
+                match compiledResult with
+                | Ok res -> res
+                | Error e -> failwith $"Expected Ok but got Error: {e}"
 
             Expect.isSome defaultCatId "Default category ID should be resolved"
             Expect.equal (Option.get defaultCatId) groceriesId "Default category should be Lebensmittel"
