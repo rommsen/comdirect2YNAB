@@ -19,12 +19,21 @@ module YamlConfig =
         Rules: Rule list
     }
 
-    let private deserializeRules (yamlContent: string) : RulesConfig =
+    let private deserializeRules (yamlContent: string) : RulesConfig option =
         let deserializer =
             DeserializerBuilder()
                 .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
                 .Build()
-        deserializer.Deserialize<RulesConfig>(yamlContent)
+
+        try
+            Some (deserializer.Deserialize<RulesConfig>(yamlContent))
+        with
+        | :? YamlDotNet.Core.YamlException as ex ->
+            Console.Error.WriteLine($"Error deserializing YAML: {ex.Message}")
+            None
+        | ex ->
+            Console.Error.WriteLine($"Unexpected error deserializing YAML: {ex.Message}")
+            None
 
     let private validateRulesConfig (config: RulesConfig) : Result<RulesConfig, string> =
         if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Match)) then
@@ -41,8 +50,8 @@ module YamlConfig =
             else
                 let yamlContent = File.ReadAllText filePath
                 match deserializeRules yamlContent with
-                | null -> Error "Failed to deserialize rules.yml. The file might be empty or malformed."
-                | rulesConfig -> validateRulesConfig rulesConfig
+                | None -> Error "Failed to deserialize rules.yml. The file might be empty or malformed."
+                | Some rulesConfig -> validateRulesConfig rulesConfig
         with
         | exn -> Error $"Error parsing rules file: {exn.Message}"
 

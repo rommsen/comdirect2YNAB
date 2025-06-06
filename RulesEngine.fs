@@ -19,15 +19,13 @@ module RulesEngine =
 
     let fetchCategories (ynabApi: YNAB.SDK.API) (budgetId: string) : Async<Result<Map<string, Guid>, string>> =
         asyncResult {
-            let! categoriesResponse =
-                try
-                    ynabApi.Categories.GetCategoriesAsync(budgetId) |> Async.AwaitTask
-                with ex ->
-                    return! Error $"YNAB API error fetching categories: {ex.Message}"
+            let! categoriesResponse = ynabApi.Categories.GetCategoriesAsync(budgetId) |> Async.AwaitTask
+               
 
             let categories =
                 categoriesResponse.Data.CategoryGroups
-                |> List.collect (fun group -> group.Categories)
+                |> Seq.toList
+                |> List.collect (fun group -> group.Categories |> Seq.toList)
                 |> List.map (fun category -> { Id = category.Id; Name = category.Name })
 
             // Build a case-insensitive map of category names to IDs
