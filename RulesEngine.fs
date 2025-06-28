@@ -31,7 +31,14 @@ let private categoriesResponseDecoder : Decoder<CategoryInfo list> =
     )
   )
 
-
+let parseCategoriesResponse (rawJson: string) : Result<Map<string, Guid>, string> =
+    Decode.fromString categoriesResponseDecoder rawJson
+    |> Result.map (fun cats ->
+        cats
+        |> List.map (fun ci -> normalizeCategoryName ci.Name, ci.Id)
+        |> Map.ofList
+        )
+    |> Result.mapError (fun e -> $"Failed to parse categories. JSON decode failed: {e}")
 
 /// --- Neue fetchCategories mit FsHttp + Thoth ---
 let fetchCategories (token: string) (budgetId: string) : Async<Result<Map<string, Guid>, string>> =
@@ -62,25 +69,28 @@ let fetchCategories (token: string) (budgetId: string) : Async<Result<Map<string
             return Error $"HTTP {int errResp.statusCode}: {err}"
       }
 
+
+        /// 2) Decode
+    // let parsed = Decode.fromString categoriesResponseDecoder rawJson
+
+    // let! flatCats =
+    //   match parsed with
+    //   | Ok cats -> Ok cats
+    //   | Error e  -> Error $"JSON decode failed: {e}"
+
+    // /// 3) Map zu Map<string,Guid>
+    // let catMap =
+    //   flatCats
+    //   |> List.map (fun ci -> normalizeCategoryName ci.Name, ci.Id)
+    //   |> Map.ofList
+
+    // printfn "▶ parsed JSON:\n%A" catMap
+
+    // return catMap  
+
     printfn "▶ RAW YNAB JSON:\n%s" rawJson
 
-    /// 2) Decode
-    let parsed = Decode.fromString categoriesResponseDecoder rawJson
-
-    let! flatCats =
-      match parsed with
-      | Ok cats -> Ok cats
-      | Error e  -> Error $"JSON decode failed: {e}"
-
-    /// 3) Map zu Map<string,Guid>
-    let catMap =
-      flatCats
-      |> List.map (fun ci -> normalizeCategoryName ci.Name, ci.Id)
-      |> Map.ofList
-
-    printfn "▶ parsed JSON:\n%A" catMap
-
-    return catMap
+    return! (parseCategoriesResponse rawJson)
   }
 
 type CompiledRule = {

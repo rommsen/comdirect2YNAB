@@ -6,8 +6,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="YamlConfig.fs" />
-    <Compile Include="RulesEngine.fs" />
-    <Compile Include="Config.fs" />
+    <Compile Include="RulesEngine.fs" /><Compile Include="Config.fs" />
+    
     <Compile Include="Comdirect/API.fs" />
     <Compile Include="Comdirect/Login.fs" />
     <Compile Include="Comdirect/Transactions.fs" />
@@ -16,8 +16,8 @@
     <Compile Include="YNAB/Transactions.fs" />
     <Compile Include="Helper.fs" />
     <Compile Include="Menu.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
+    
+  <Compile Include="Program.fs" /></ItemGroup>
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />
     <PackageReference Include="FsHttp" Version="15.0.1" />

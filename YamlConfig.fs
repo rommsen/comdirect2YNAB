@@ -16,13 +16,20 @@ module YamlConfig =
     [<CLIMutable>]
     type RulesConfig = {
         DefaultCategory: string option
-        Rules: Rule list
+        Rules: System.Collections.Generic.List<Rule>
     }
+    with
+        static member create(rules: List<Rule>) : RulesConfig =
+            { DefaultCategory = None; Rules = System.Collections.Generic.List(rules) }
+
+        static member createWithDefaultCategory(defaultCategory: string, rules: List<Rule>) : RulesConfig =
+            { DefaultCategory = Some defaultCategory; Rules = System.Collections.Generic.List(rules) }
 
     let private deserializeRules (yamlContent: string) : RulesConfig option =
+        // Enable F# record, option and array support by registering F# type extensions
         let deserializer =
             DeserializerBuilder()
-                .WithNamingConvention(YamlDotNet.Serialization.NamingConventions.UnderscoredNamingConvention.Instance)
+                .WithNamingConvention(UnderscoredNamingConvention.Instance)
                 .Build()
 
         try
@@ -36,9 +43,9 @@ module YamlConfig =
             None
 
     let private validateRulesConfig (config: RulesConfig) : Result<RulesConfig, string> =
-        if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Match)) then
+        if config.Rules |> Seq.exists (fun rule -> String.IsNullOrWhiteSpace rule.Match) then
             Error "Invalid 'match' field in one or more rules: cannot be empty."
-        else if config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace(rule.Category)) then
+        else if config.Rules |> Seq.exists (fun rule -> String.IsNullOrWhiteSpace rule.Category) then
             Error "Invalid 'category' field in one or more rules: cannot be empty."
         else
             Ok config
@@ -49,6 +56,7 @@ module YamlConfig =
                 Error $"Rules file not found at '{filePath}'"
             else
                 let yamlContent = File.ReadAllText filePath
+                printfn "%s" yamlContent
                 match deserializeRules yamlContent with
                 | None -> Error "Failed to deserialize rules.yml. The file might be empty or malformed."
                 | Some rulesConfig -> validateRulesConfig rulesConfig
@@ -59,4 +67,4 @@ module YamlConfig =
         Console.Error.WriteLine($"Error: {errorMessage}")
         Environment.Exit(1)
         // Return a dummy value to satisfy the compiler, actual exit happens above
-        { DefaultCategory = None; Rules = [] }
+        { DefaultCategory = None; Rules = System.Collections.Generic.List<Rule>() }
