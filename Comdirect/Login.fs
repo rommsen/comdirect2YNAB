@@ -177,7 +177,7 @@ let login credentials apiKeys =
     // printfn "[login] session_identifier: %s" sessionIdentifier
     let! challenge = validationChallenge requestInfo tokens sessionIdentifier
     // printfn "[login] Validation challenge: %A" challenge
-    // printfn "[login] Press any key after push TAN accepted"
+    printfn "Press any key after push TAN accepted"
     Console.ReadKey() |> ignore
     let! _ = activateSessionTan requestInfo tokens sessionIdentifier challenge
     // printfn "[login] Granted session TAN"

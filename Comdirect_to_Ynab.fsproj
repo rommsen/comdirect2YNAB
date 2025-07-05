@@ -13,11 +13,11 @@
     <Compile Include="Comdirect/Transactions.fs" />
     <Compile Include="YNAB/Ynab.fs" />
     <Compile Include="YNAB/Infos.fs" />
-    <Compile Include="YNAB/Transactions.fs" />
+    <Compile Include="YNAB/Transactions.fs" /><Compile Include="RulesManager.fs" />
+    
     <Compile Include="Helper.fs" />
     <Compile Include="Menu.fs" />
-    
-  <Compile Include="Program.fs" /></ItemGroup>
+    <Compile Include="Program.fs" /></ItemGroup>
   <ItemGroup>
     <PackageReference Include="Argu" Version="6.1.1" />
     <PackageReference Include="FsHttp" Version="15.0.1" />

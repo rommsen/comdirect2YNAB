@@ -70,27 +70,9 @@ let fetchCategories (token: string) (budgetId: string) : Async<Result<Map<string
       }
 
 
-        /// 2) Decode
-    // let parsed = Decode.fromString categoriesResponseDecoder rawJson
+    // printfn "[debug] ▶ RAW YNAB JSON:\n%s" rawJson
 
-    // let! flatCats =
-    //   match parsed with
-    //   | Ok cats -> Ok cats
-    //   | Error e  -> Error $"JSON decode failed: {e}"
-
-    // /// 3) Map zu Map<string,Guid>
-    // let catMap =
-    //   flatCats
-    //   |> List.map (fun ci -> normalizeCategoryName ci.Name, ci.Id)
-    //   |> Map.ofList
-
-    // printfn "▶ parsed JSON:\n%A" catMap
-
-    // return catMap  
-
-    printfn "▶ RAW YNAB JSON:\n%s" rawJson
-
-    return! (parseCategoriesResponse rawJson)
+    return! parseCategoriesResponse rawJson
   }
 
 type CompiledRule = {
