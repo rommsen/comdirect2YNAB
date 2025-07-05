@@ -71,28 +71,32 @@ let loadAndCompileRules (config: Config.Config) (rulesPath: string) =
 let showRulesInfo (config: Config.Config) (rulesPath: string) =
     let rulesConfig = parseRulesConfig rulesPath
     
-    let compiledRules, defaultCategoryId =
-        if Seq.isEmpty rulesConfig.Rules && rulesConfig.DefaultCategory.IsNone then
-            ([], None)
+    // Fetch categories for both rules compilation and display
+    let categoryMapResult =
+        if String.IsNullOrWhiteSpace config.Transfer.YNAB_Budget then
+            Error "YNAB budget ID not set in configuration."
         else
-            let categoryMapResult =
-                if String.IsNullOrWhiteSpace config.Transfer.YNAB_Budget then
-                    Error "YNAB budget ID not set in configuration."
-                else
-                    try
-                        RulesEngine.fetchCategories config.YNAB_Api.Secret config.Transfer.YNAB_Budget
-                        |> Async.RunSynchronously
-                    with ex -> Error (sprintf "Exception fetching YNAB categories: %s" ex.Message)
-            match categoryMapResult with
-            | Error errMsg ->
-                Console.Error.WriteLine($"Error fetching YNAB categories: {errMsg}")
-                ([], None)
-            | Ok categoryMap ->
-                match RulesEngine.compileRules rulesConfig categoryMap with
-                | Ok (compiled, defaultId) -> (compiled, defaultId)
-                | Error compileErrors ->
-                    Console.Error.WriteLine($"Error compiling rules: {compileErrors}")
+            try
+                RulesEngine.fetchCategories config.YNAB_Api.Secret config.Transfer.YNAB_Budget
+                |> Async.RunSynchronously
+            with ex -> Error (sprintf "Exception fetching YNAB categories: %s" ex.Message)
+    
+    let compiledRules, defaultCategoryId, categoryMap =
+        match categoryMapResult with
+        | Error errMsg ->
+            Console.Error.WriteLine($"Error fetching YNAB categories: {errMsg}")
+            ([], None, Map.empty)
+        | Ok categoryMap ->
+            let compiled, defaultId =
+                if Seq.isEmpty rulesConfig.Rules && rulesConfig.DefaultCategory.IsNone then
                     ([], None)
+                else
+                    match RulesEngine.compileRules rulesConfig categoryMap with
+                    | Ok (compiled, defaultId) -> (compiled, defaultId)
+                    | Error compileErrors ->
+                        Console.Error.WriteLine($"Error compiling rules: {compileErrors}")
+                        ([], None)
+            (compiled, defaultId, categoryMap)
 
     Console.WriteLine(System.Environment.NewLine + "--- Rules Information ---")
     Console.WriteLine($"Rules file path: {rulesPath}")
@@ -117,6 +121,18 @@ let showRulesInfo (config: Config.Config) (rulesPath: string) =
             Console.WriteLine(sprintf "    %d. Regex: '%s' -> Category ID: %A" (i+1) (cr.Regex.ToString()) cr.CategoryId))
     let resolvedDefaultCatIdStr = defaultCategoryId |> Option.map (fun id -> id.ToString()) |> Option.defaultValue "Not set or not found"
     Console.WriteLine($"  Resolved Default Category ID: {resolvedDefaultCatIdStr}")
+    
+    // Display all YNAB categories
+    Console.WriteLine(System.Environment.NewLine + "All YNAB Categories:")
+    if Map.isEmpty categoryMap then
+        Console.WriteLine("  No categories available (could not fetch from YNAB)")
+    else
+        categoryMap
+        |> Map.toSeq
+        |> Seq.sortBy fst
+        |> Seq.iter (fun (name, guid) ->
+            Console.WriteLine(sprintf "  %s: %A" name guid))
+    
     Console.WriteLine("--- End Rules Information ---")
 
 let initializeRulesPath (args: string array) =
