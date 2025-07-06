@@ -122,16 +122,16 @@ let showRulesInfo (config: Config.Config) (rulesPath: string) =
     let resolvedDefaultCatIdStr = defaultCategoryId |> Option.map (fun id -> id.ToString()) |> Option.defaultValue "Not set or not found"
     Console.WriteLine($"  Resolved Default Category ID: {resolvedDefaultCatIdStr}")
     
-    // Display all YNAB categories
-    Console.WriteLine(System.Environment.NewLine + "All YNAB Categories:")
-    if Map.isEmpty categoryMap then
-        Console.WriteLine("  No categories available (could not fetch from YNAB)")
-    else
-        categoryMap
-        |> Map.toSeq
-        |> Seq.sortBy fst
-        |> Seq.iter (fun (name, guid) ->
-            Console.WriteLine(sprintf "  %s: %A" name guid))
+    // // Display all YNAB categories
+    // Console.WriteLine(System.Environment.NewLine + "All YNAB Categories:")
+    // if Map.isEmpty categoryMap then
+    //     Console.WriteLine("  No categories available (could not fetch from YNAB)")
+    // else
+    //     categoryMap
+    //     |> Map.toSeq
+    //     |> Seq.sortBy fst
+    //     |> Seq.iter (fun (name, guid) ->
+    //         Console.WriteLine(sprintf "  %s: %A" name guid))
     
     Console.WriteLine("--- End Rules Information ---")
 

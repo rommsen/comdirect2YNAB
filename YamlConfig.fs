@@ -6,6 +6,7 @@ open YamlDotNet.Serialization
 open YamlDotNet.Serialization.NamingConventions
 
 module YamlConfig =
+    open FsToolkit.ErrorHandling
 
     [<CLIMutable>]
     type Rule = {
@@ -14,24 +15,24 @@ module YamlConfig =
     }
 
     [<CLIMutable>]
-    type private RulesConfigInternal = {
+    type RulesConfigInternal = {
             DefaultCategory: string option
-            Rules: System.Collections.Generic.List<Rule>
+            Rules: Collections.Generic.List<Rule>
     }
 
-    type RulesConfig ={
-        Rules : List<Rule>
+    type RulesConfig = {
+        Rules : Rule list
         DefaultCategory: string option    
     }
-    with
-        static member create(rules: List<Rule>) : RulesConfig =
-            { DefaultCategory = None; Rules = rules }
 
-        static member createWithDefaultCategory(defaultCategory: string, rules: List<Rule>) : RulesConfig =
-            { DefaultCategory = Some defaultCategory; Rules = rules }
+    // Module-level functions instead of static members
+    let createRulesConfig (rules: Rule list) : RulesConfig =
+        { DefaultCategory = None; Rules = rules }
+
+    let createRulesConfigWithDefault (defaultCategory: string) (rules: Rule list) : RulesConfig =
+        { DefaultCategory = Some defaultCategory; Rules = rules }
 
     let private deserializeRules (yamlContent: string) : RulesConfig option =
-        // Enable F# record, option and array support by registering F# type extensions
         let deserializer =
             DeserializerBuilder()
                 .WithNamingConvention(UnderscoredNamingConvention.Instance)
@@ -39,44 +40,42 @@ module YamlConfig =
 
         try
             let deserialized = deserializer.Deserialize<RulesConfigInternal>(yamlContent)
-
-            let rules_config =   {
-                Rules = deserialized.Rules |> Seq.toList
+            
+            Some {
+                Rules = deserialized.Rules |> List.ofSeq
                 DefaultCategory = deserialized.DefaultCategory
             }
-
-            Some rules_config
         with
         | :? YamlDotNet.Core.YamlException as ex ->
-            Console.Error.WriteLine($"Error deserializing YAML: {ex.Message}")
+            printfn "Error deserializing YAML: %s" ex.Message
             None
         | ex ->
-            Console.Error.WriteLine($"Unexpected error deserializing YAML: {ex.Message}")
+            printfn "Unexpected error deserializing YAML: %s" ex.Message
             None
 
     let private validateRulesConfig (config: RulesConfig) : Result<RulesConfig, string> =
-        if config.Rules |> Seq.exists (fun rule -> String.IsNullOrWhiteSpace rule.Match) then
-            Error "Invalid 'match' field in one or more rules: cannot be empty."
-        else if config.Rules |> Seq.exists (fun rule -> String.IsNullOrWhiteSpace rule.Category) then
-            Error "Invalid 'category' field in one or more rules: cannot be empty."
-        else
-            Ok config
+        let hasEmptyMatch = config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace rule.Match)
+        let hasEmptyCategory = config.Rules |> List.exists (fun rule -> String.IsNullOrWhiteSpace rule.Category)
+        
+        match hasEmptyMatch, hasEmptyCategory with
+        | true, _ -> Error "Invalid 'match' field in one or more rules: cannot be empty."
+        | _, true -> Error "Invalid 'category' field in one or more rules: cannot be empty."
+        | false, false -> Ok config
 
     let parseRulesFile (filePath: string) : Result<RulesConfig, string> =
-        try
-            if not (File.Exists filePath) then
-                Error $"Rules file not found at '{filePath}'"
-            else
-                let yamlContent = File.ReadAllText filePath
-                printfn "%s" yamlContent
+        result {
+            do! if File.Exists filePath then Ok () else Error $"Rules file not found at '{filePath}'"
+            let yamlContent = File.ReadAllText filePath
+            //printfn "[parseRulesFile] Content of rules file: %s" yamlContent
+            let! rulesConfig =
                 match deserializeRules yamlContent with
+                | Some cfg -> Ok cfg
                 | None -> Error "Failed to deserialize rules.yml. The file might be empty or malformed."
-                | Some rulesConfig -> validateRulesConfig rulesConfig
-        with
-        | exn -> Error $"Error parsing rules file: {exn.Message}"
+            return! validateRulesConfig rulesConfig
+        }
+        |> Result.mapError (fun err -> $"Error parsing rules file: {err}")
 
-    let exitWithError (errorMessage: string) =
-        Console.Error.WriteLine($"Error: {errorMessage}")
+    let exitWithError (errorMessage: string) : 'a =
+        eprintfn "Error: %s" errorMessage
         Environment.Exit(1)
-        // Return a dummy value to satisfy the compiler, actual exit happens above
-        { DefaultCategory = None; Rules = [] }
+        failwith "This line should never be reached"

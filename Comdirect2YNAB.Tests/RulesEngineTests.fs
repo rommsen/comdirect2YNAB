@@ -259,7 +259,7 @@ let categories_json = $"""
 let tests =
     testList "RulesEngine Tests" [
         testCase "Exact Memo Matching" <| fun _ ->
-            let rulesConfig = [{ Match = "REWE"; Category = "Groceries" }] |> RulesConfig.create 
+            let rulesConfig = [{ Match = "REWE"; Category = "Groceries" }] |> YamlConfig.createRulesConfig
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -274,7 +274,7 @@ let tests =
             Expect.equal classifiedCategoryId (Some groceriesId) "Should classify 'REWE' memo to Groceries"
 
         testCase "Regex Memo Matching" <| fun _ ->
-            let rulesConfig = [{ Match = ".*Amazon.*"; Category = "Shopping" }] |> RulesConfig.create 
+            let rulesConfig = [{ Match = ".*Amazon.*"; Category = "Shopping" }] |> YamlConfig.createRulesConfig
             let categoryMap = createCategoryMap [("Shopping", shoppingId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -290,7 +290,7 @@ let tests =
 
         testCase "Default Category Fallback - No Rules Match" <| fun _ ->
             let rules = [{ Match = "NON_MATCHING_RULE"; Category = "Shopping" }]
-            let rulesConfig = RulesConfig.createWithDefaultCategory ("Uncategorized",rules)
+            let rulesConfig = YamlConfig.createRulesConfigWithDefault "Uncategorized" rules
             let categoryMap = createCategoryMap [("Shopping", shoppingId); ("Uncategorized", uncategorizedId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -308,7 +308,7 @@ let tests =
             Expect.equal classifiedCategoryId (Some uncategorizedId) "Should fall back to default category"
 
         testCase "Default Category Fallback - No Memo" <| fun _ ->
-            let rulesConfig = RulesConfig.createWithDefaultCategory ("Uncategorized",[])
+            let rulesConfig = YamlConfig.createRulesConfigWithDefault "Uncategorized" []
             let categoryMap = createCategoryMap [("Uncategorized", uncategorizedId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -322,7 +322,7 @@ let tests =
             Expect.equal classifiedCategoryId (Some uncategorizedId) "Should fall back to default category when no memo"
 
         testCase "No Default Category - No Match" <| fun _ ->
-            let rulesConfig = [{ Match = "NON_MATCHING_RULE"; Category = "Shopping" }] |> RulesConfig.create 
+            let rulesConfig = [{ Match = "NON_MATCHING_RULE"; Category = "Shopping" }] |> YamlConfig.createRulesConfig
             let categoryMap = createCategoryMap [("Shopping", shoppingId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -339,7 +339,7 @@ let tests =
             Expect.isNone classifiedCategoryId "Should result in no category if no match and no default"
 
         testCase "Category Name Resolution Error - Category Not Found" <| fun _ ->
-            let rulesConfig = [{ Match = "REWE"; Category = "NonExistentCategory" }] |> RulesConfig.create 
+            let rulesConfig = [{ Match = "REWE"; Category = "NonExistentCategory" }] |> YamlConfig.createRulesConfig
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -351,7 +351,7 @@ let tests =
 
 
         testCase "Category Name Resolution Error - Default Category Not Found" <| fun _ ->
-            let rulesConfig = RulesConfig.createWithDefaultCategory ("MissingDefault",[])
+            let rulesConfig = YamlConfig.createRulesConfigWithDefault "MissingDefault" []
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -362,7 +362,7 @@ let tests =
                 Expect.stringContains errorMsg "MissingDefault' not found" "Error message should indicate missing default category"
 
         testCase "Invalid Regex in Rule" <| fun _ ->
-            let rulesConfig = [{ Match = "["; Category = "Groceries" }] |> RulesConfig.create // Invalid regex
+            let rulesConfig = [{ Match = "["; Category = "Groceries" }] |> YamlConfig.createRulesConfig
             let categoryMap = createCategoryMap [("Groceries", groceriesId)]
 
             let compiledResult = RulesEngine.compileRules rulesConfig categoryMap
@@ -374,7 +374,7 @@ let tests =
 
         testCase "Umlaut and Case Insensitive Category Name Resolution" <| fun _ ->
             let rules = [{ Match = "Test"; Category = "Reisen · Bahn" }] // User input for rule
-            let rulesConfig = RulesConfig.createWithDefaultCategory ("Lebensmittel",rules)
+            let rulesConfig = YamlConfig.createRulesConfigWithDefault "Lebensmittel" rules
             // YNAB category names
             let categoryMap = createCategoryMap [
                 ("Reisen · Bahn", travelId);
