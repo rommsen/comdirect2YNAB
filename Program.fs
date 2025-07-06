@@ -51,8 +51,7 @@ let transfer (config: Config.Config) (rulesPath: string) =
         tokens 
         config.Transfer.Comdirect_Account
 
-    // Load and compile rules only when needed
-    let! compiledRules = RulesManager.loadAndCompileRules config rulesPath
+    let! compiledRules = RulesManager.test config rulesPath
 
     return!
       YNAB.Transactions.addNonexistent 
@@ -104,6 +103,7 @@ let main args =
   // Function to display rules information
   let showRulesInfo (config: Config.Config) =
     RulesManager.showRulesInfo config rulesPath
+    |> runAsync
 
   // Define menu actions
   let menuActions =
