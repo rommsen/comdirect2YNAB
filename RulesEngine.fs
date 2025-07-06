@@ -84,7 +84,7 @@ let compileRules (rulesConfig: YamlConfig.RulesConfig) (categoryMap: Map<string,
     let mutable errors = []
     let compiledRules =
         rulesConfig.Rules
-        |> Seq.choose (fun rule ->
+        |> List.choose (fun rule ->
             let normalizedCategoryName = normalizeCategoryName rule.Category
             match categoryMap |> Map.tryFind normalizedCategoryName with
             | Some categoryId ->
@@ -99,7 +99,6 @@ let compileRules (rulesConfig: YamlConfig.RulesConfig) (categoryMap: Map<string,
                 errors <- $"Category '{rule.Category}' not found or ambiguous in YNAB." :: errors
                 None
         )
-        |> Seq.toList
 
     let defaultCategoryId =
         rulesConfig.DefaultCategory

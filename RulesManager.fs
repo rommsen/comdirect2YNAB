@@ -41,11 +41,11 @@ let private parseRulesConfig (rulesPath: string) =
         conf
     | Error errMsg ->
         Console.WriteLine($"Warning: Could not load rules from '{rulesPath}': {errMsg}. Proceeding without rules.")
-        { DefaultCategory = None; Rules = System.Collections.Generic.List<YamlConfig.Rule>() }
+        { DefaultCategory = None; Rules = [] }
 
 let private compileRulesAsync (config: Config.Config) (rulesConfig: YamlConfig.RulesConfig) =
     async {
-        if not (rulesConfig.Rules |> Seq.isEmpty) || rulesConfig.DefaultCategory.IsSome then
+        if not (rulesConfig.Rules |> List.isEmpty) || rulesConfig.DefaultCategory.IsSome then
             let! categoryMapResult = RulesEngine.fetchCategories config.YNAB_Api.Secret config.Transfer.YNAB_Budget
             match categoryMapResult with
             | Error errMsg ->

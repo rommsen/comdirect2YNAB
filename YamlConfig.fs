@@ -14,16 +14,21 @@ module YamlConfig =
     }
 
     [<CLIMutable>]
-    type RulesConfig = {
-        DefaultCategory: string option
-        Rules: System.Collections.Generic.List<Rule>
+    type private RulesConfigInternal = {
+            DefaultCategory: string option
+            Rules: System.Collections.Generic.List<Rule>
+    }
+
+    type RulesConfig ={
+        Rules : List<Rule>
+        DefaultCategory: string option    
     }
     with
         static member create(rules: List<Rule>) : RulesConfig =
-            { DefaultCategory = None; Rules = System.Collections.Generic.List(rules) }
+            { DefaultCategory = None; Rules = rules }
 
         static member createWithDefaultCategory(defaultCategory: string, rules: List<Rule>) : RulesConfig =
-            { DefaultCategory = Some defaultCategory; Rules = System.Collections.Generic.List(rules) }
+            { DefaultCategory = Some defaultCategory; Rules = rules }
 
     let private deserializeRules (yamlContent: string) : RulesConfig option =
         // Enable F# record, option and array support by registering F# type extensions
@@ -33,7 +38,14 @@ module YamlConfig =
                 .Build()
 
         try
-            Some (deserializer.Deserialize<RulesConfig>(yamlContent))
+            let deserialized = deserializer.Deserialize<RulesConfigInternal>(yamlContent)
+
+            let rules_config =   {
+                Rules = deserialized.Rules |> Seq.toList
+                DefaultCategory = deserialized.DefaultCategory
+            }
+
+            Some rules_config
         with
         | :? YamlDotNet.Core.YamlException as ex ->
             Console.Error.WriteLine($"Error deserializing YAML: {ex.Message}")
@@ -67,4 +79,4 @@ module YamlConfig =
         Console.Error.WriteLine($"Error: {errorMessage}")
         Environment.Exit(1)
         // Return a dummy value to satisfy the compiler, actual exit happens above
-        { DefaultCategory = None; Rules = System.Collections.Generic.List<Rule>() }
+        { DefaultCategory = None; Rules = [] }
