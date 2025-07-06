@@ -88,7 +88,7 @@ let addNonexistent
         // and we want to indicate success. The original code returned "done".
         // If response structure is different, this part might need adjustment.
         // For now, preserving the "done" string for compatibility with existing logic.
-        return Ok "done"
+        return Ok $"Added {List.length newTransactions} new transactions"
       with 
       | e -> return Error e.Message
     else 
