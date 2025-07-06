@@ -26,10 +26,6 @@ You can override the path to this file using the `--rules` command-line option (
 The `rules.yml` file has the following structure:
 
 ```yaml
-# Optional: Specify a default category if no rules match.
-# Category name must match a YNAB category name (case-insensitive, umlauts like 'ä' can be 'ae').
-default_category: "Uncategorized"
-
 # List of rules, processed from top to bottom. The first match wins.
 rules:
   # Match using simple text (case-insensitive)
@@ -60,7 +56,6 @@ rules:
 
 **Details:**
 
-*   `default_category` (optional): The human-readable name of a YNAB category to use if no rules match a transaction's memo. If omitted and no rules match, the transaction will not be assigned a category by the rules engine.
 *   `rules`: A list of rule objects.
     *   `match`: A string pattern to match against the transaction's memo. This can be a simple string (case-insensitive containment check) or a valid .NET Regular Expression (also applied case-insensitively).
     *   `category`: The human-readable name of the YNAB category to assign if the `match` pattern is found in the memo. The name must correspond to an existing category in your YNAB budget. The matching is case-insensitive, and common umlaut variations (e.g., "ä" vs "ae") are handled.
