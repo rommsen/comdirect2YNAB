@@ -80,7 +80,7 @@ type CompiledRule = {
     CategoryId: Guid
 }
 
-let compileRules (rulesConfig: YamlConfig.RulesConfig) (categoryMap: Map<string, Guid>) : Result<CompiledRule list * Guid option, string> =
+let compileRules (rulesConfig: YamlConfig.RulesConfig) (categoryMap: Map<string, Guid>) : Result<CompiledRule list, string> =
     let mutable errors = []
     let compiledRules =
         rulesConfig.Rules
@@ -100,27 +100,16 @@ let compileRules (rulesConfig: YamlConfig.RulesConfig) (categoryMap: Map<string,
                 None
         )
 
-    let defaultCategoryId =
-        rulesConfig.DefaultCategory
-        |> Option.bind (fun defaultCategoryName ->
-            let normalizedDefaultCategoryName = normalizeCategoryName defaultCategoryName
-            match categoryMap |> Map.tryFind normalizedDefaultCategoryName with
-            | Some id -> Some id
-            | None ->
-                errors <- $"Default category '{defaultCategoryName}' not found or ambiguous in YNAB." :: errors
-                None
-        )
-
     if List.isEmpty errors then
-        Ok (compiledRules, defaultCategoryId)
+        Ok compiledRules
     else
         Error (String.concat "" (List.rev errors))
 
 
-let classify (compiledRules: CompiledRule list) (defaultCategoryId: Guid option) (transactionMemo: string option) : Guid option =
-    match transactionMemo with
-    | None -> defaultCategoryId // Or None if no default category is set
-    | Some memo ->
-        match compiledRules |> List.tryFind (fun rule -> rule.Regex.IsMatch(memo)) with
-        | Some matchingRule -> Some matchingRule.CategoryId
-        | None -> defaultCategoryId
+let classify (compiledRules: CompiledRule list) (transactionMemo: string option) : Guid option =
+  transactionMemo
+  |> Option.bind (fun memo ->
+       compiledRules
+       |> List.tryFind (fun rule -> rule.Regex.IsMatch memo)
+       |> Option.map (fun rule -> rule.CategoryId)
+     )

@@ -16,21 +16,16 @@ module YamlConfig =
 
     [<CLIMutable>]
     type RulesConfigInternal = {
-            DefaultCategory: string option
-            Rules: Collections.Generic.List<Rule>
+        Rules: Collections.Generic.List<Rule>
     }
 
     type RulesConfig = {
         Rules : Rule list
-        DefaultCategory: string option    
     }
 
     // Module-level functions instead of static members
     let createRulesConfig (rules: Rule list) : RulesConfig =
-        { DefaultCategory = None; Rules = rules }
-
-    let createRulesConfigWithDefault (defaultCategory: string) (rules: Rule list) : RulesConfig =
-        { DefaultCategory = Some defaultCategory; Rules = rules }
+        { Rules = rules }
 
     let private deserializeRules (yamlContent: string) : RulesConfig option =
         let deserializer =
@@ -40,11 +35,7 @@ module YamlConfig =
 
         try
             let deserialized = deserializer.Deserialize<RulesConfigInternal>(yamlContent)
-            
-            Some {
-                Rules = deserialized.Rules |> List.ofSeq
-                DefaultCategory = deserialized.DefaultCategory
-            }
+            Some { Rules = deserialized.Rules |> List.ofSeq }
         with
         | :? YamlDotNet.Core.YamlException as ex ->
             printfn "Error deserializing YAML: %s" ex.Message

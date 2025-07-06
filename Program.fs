@@ -6,7 +6,7 @@ open Helper
 open Config
 open UI.Menu
 open Thoth.Json.Net
-open RulesManager // Added
+open RulesManager
 
 let getYnabInfo config =
   let ynabApi = new YNAB.SDK.API(config.YNAB_Api.Secret)
@@ -52,7 +52,7 @@ let transfer (config: Config.Config) (rulesPath: string) =
         config.Transfer.Comdirect_Account
 
     // Load and compile rules only when needed
-    let! compiledRules, defaultCategoryId = RulesManager.loadAndCompileRules config rulesPath
+    let! compiledRules = RulesManager.loadAndCompileRules config rulesPath
 
     return!
       YNAB.Transactions.addNonexistent 
@@ -62,7 +62,6 @@ let transfer (config: Config.Config) (rulesPath: string) =
         transactions 
         ynabApi
         compiledRules
-        defaultCategoryId
   }
   |> runAsync
   |> function | Ok result -> printfn "Finished %A" result | Error error -> printfn "Error %s" error
@@ -89,8 +88,7 @@ let testYnab (config: Config.Config)  =
         (Guid.Parse(config.Transfer.YNAB_Account))
         transactions 
         ynabApi
-        [] // New parameter
-        None // New parameter
+        []
   }
   |> runAsync
   |> function | Ok result -> printfn "Finished %A" result | Error error -> printfn "Error %s" error

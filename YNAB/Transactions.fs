@@ -33,8 +33,7 @@ let private truncateString str maxlength =
 let private toSaveTransaction
     (accountId: Guid)
     (transaction: Comdirect.Transactions.Transaction)
-    (compiledRules: RulesEngine.CompiledRule list) // New parameter
-    (defaultCategoryId: Guid option) : SaveTransaction = // New parameter
+    (compiledRules: RulesEngine.CompiledRule list) : SaveTransaction =
 
   let memo =
     sprintf "%s, %s, Ref: %s" 
@@ -43,7 +42,7 @@ let private toSaveTransaction
       transaction.Reference
 
   // Determine category using the rules engine
-  let categoryId = RulesEngine.classify compiledRules defaultCategoryId (Some memo) // Pass the full memo
+  let categoryId = RulesEngine.classify compiledRules (Some memo) // Pass the full memo
 
   let tx = 
     new SaveTransaction(
@@ -63,8 +62,7 @@ let addNonexistent
     (accountId: Guid)
     (bankTransactions: Comdirect.Transactions.Transaction list)
     (ynabApi: YNAB.SDK.API) 
-    (compiledRules: RulesEngine.CompiledRule list) // New parameter
-    (defaultCategoryId: Guid option) : Async<Result<string, string>> = // New parameter
+    (compiledRules: RulesEngine.CompiledRule list) : Async<Result<string, string>> =
   async {
 
     let! ynabTransactions =
@@ -78,8 +76,7 @@ let addNonexistent
     let newTransactions =
       bankTransactions
       |> List.filter (fun tx -> not (references |> List.contains tx.Reference))
-      // Pass compiledRules and defaultCategoryId to toSaveTransaction
-      |> List.map (fun bankTx -> toSaveTransaction accountId bankTx compiledRules defaultCategoryId)
+      |> List.map (fun bankTx -> toSaveTransaction accountId bankTx compiledRules)
 
     if not (newTransactions |> List.isEmpty) then
       let wrapped =
