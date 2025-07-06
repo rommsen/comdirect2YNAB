@@ -22,9 +22,14 @@ let txDecoder : Decoder<Transaction> =
         match get.Optional.At ["remitter" ; "holderName"] Decode.string with 
         | Some x -> Some x 
         | None -> get.Optional.At ["creditor" ; "holderName"] Decode.string
+
+      let bookingDate = 
+        get.Required.Field "bookingDate" Decode.string
+        |> DateTime.Parse
+        |> fun dt -> dt.Date
       { 
         Reference = get.Required.Field "reference" Decode.string
-        Booking_Date = get.Required.Field "bookingDate" Decode.datetime
+        Booking_Date = bookingDate
         Name = name
         Amount = get.Required.At ["amount"; "value"] Decode.decimal
         Info = get.Required.Field "remittanceInfo" Decode.string
@@ -61,13 +66,13 @@ let get (requestInfo: RequestInfo) tokens accountId startPagingAt =
 
 let getLastXDays (days : int) (requestInfo: RequestInfo) tokens accountId =
   let dateCutoff = DateTime.Today.Subtract(TimeSpan.FromDays(float days))
-  // printfn "[getLastXDays] Date cutoff: %A" dateCutoff
+  printfn "[getLastXDays] Date cutoff: %A" dateCutoff
   let rec startWithPagingAt startPagingAt =
     asyncResult {
-      // printfn "[getLastXDays] Paging at %i" startPagingAt
+      printfn "[getLastXDays] Paging at %i" startPagingAt
       let! transactions = get requestInfo tokens accountId startPagingAt
       let txInUse = transactions |> List.takeWhile (fun tx -> tx.Booking_Date >= dateCutoff)
-      // printfn "[getLastXDays] Retrieved %i transactions, %i within cutoff" (List.length transactions) (List.length txInUse)
+      printfn "[getLastXDays] Retrieved %i transactions, %i within cutoff" (List.length transactions) (List.length txInUse)
       if List.length transactions = List.length txInUse then
         let! more = startWithPagingAt (startPagingAt + List.length transactions)
         return txInUse @ more
